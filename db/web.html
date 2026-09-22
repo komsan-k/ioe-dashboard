@@ -1,0 +1,340 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>ESP32 MQTT Dashboard</title>
+
+  <!-- MQTT.js -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    header {
+      background: #1f2937;
+      color: white;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      margin-bottom: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .counter {
+      font-size: 72px;
+      font-weight: bold;
+      margin: 20px;
+    }
+
+    .connected {
+      color: green;
+      font-weight: bold;
+    }
+
+    .disconnected {
+      color: red;
+      font-weight: bold;
+    }
+
+    .topic {
+      font-family: monospace;
+      background: #eeeeee;
+      padding: 8px;
+      border-radius: 5px;
+    }
+
+    #history {
+      text-align: left;
+      max-height: 250px;
+      overflow-y: auto;
+      font-family: monospace;
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+
+<body>
+
+<header>
+  <h1>ESP32 MQTT Dashboard</h1>
+  <p>GitHub Pages + MQTT</p>
+</header>
+
+
+<div class="container">
+
+  <!-- Connection Status -->
+  <div class="card">
+
+    <h2>MQTT Connection</h2>
+
+    <p>
+      Status:
+      <span id="status" class="disconnected">
+        Connecting...
+      </span>
+    </p>
+
+    <p>
+      Topic:
+      <span class="topic">
+        KK_test/counter_topic
+      </span>
+    </p>
+
+  </div>
+
+
+  <!-- Counter -->
+  <div class="card">
+
+    <h2>ESP32 Counter</h2>
+
+    <div id="counter" class="counter">
+      --
+    </div>
+
+    <p>
+      Updated:
+      <span id="updateTime">
+        Waiting for data...
+      </span>
+    </p>
+
+  </div>
+
+
+  <!-- Message History -->
+  <div class="card">
+
+    <h2>Message History</h2>
+
+    <div id="history">
+      Waiting for MQTT messages...
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+  // ==========================================
+  // MQTT Configuration
+  // ==========================================
+
+  const topic = "KK_test/counter_topic";
+
+  /*
+     Browser dashboards must use WebSockets,
+     not the ESP32 TCP connection on port 1883.
+  */
+
+  const broker =
+    "wss://broker.hivemq.com:8884/mqtt";
+
+
+  // Generate unique MQTT client ID
+  const clientId =
+    "github_dashboard_" +
+    Math.random().toString(16).substring(2, 10);
+
+
+  // ==========================================
+  // Connect to MQTT Broker
+  // ==========================================
+
+  const client = mqtt.connect(broker, {
+
+    clientId: clientId,
+
+    clean: true,
+
+    connectTimeout: 4000,
+
+    reconnectPeriod: 2000
+
+  });
+
+
+  // ==========================================
+  // MQTT Connected
+  // ==========================================
+
+  client.on("connect", function () {
+
+    console.log("Connected to MQTT broker");
+
+    const status =
+      document.getElementById("status");
+
+    status.innerHTML = "Connected";
+
+    status.className = "connected";
+
+
+    // Subscribe to ESP32 topic
+    client.subscribe(topic, function (err) {
+
+      if (!err) {
+
+        console.log(
+          "Subscribed to:",
+          topic
+        );
+
+      } else {
+
+        console.log(
+          "Subscription error:",
+          err
+        );
+
+      }
+
+    });
+
+  });
+
+
+  // ==========================================
+  // Receive MQTT Message
+  // ==========================================
+
+  client.on(
+    "message",
+    function (receivedTopic, message) {
+
+      const value =
+        message.toString();
+
+
+      console.log(
+        receivedTopic,
+        value
+      );
+
+
+      // Update counter
+      document.getElementById(
+        "counter"
+      ).innerHTML = value;
+
+
+      // Update time
+      const now =
+        new Date();
+
+      document.getElementById(
+        "updateTime"
+      ).innerHTML =
+        now.toLocaleTimeString();
+
+
+      // Add message to history
+      const history =
+        document.getElementById(
+          "history"
+        );
+
+
+      const newMessage =
+        document.createElement("div");
+
+
+      newMessage.innerHTML =
+        now.toLocaleTimeString()
+        + " | "
+        + receivedTopic
+        + " → "
+        + value;
+
+
+      history.prepend(
+        newMessage
+      );
+
+    }
+  );
+
+
+  // ==========================================
+  // MQTT Error
+  // ==========================================
+
+  client.on(
+    "error",
+    function (error) {
+
+      console.log(
+        "MQTT Error:",
+        error
+      );
+
+      const status =
+        document.getElementById(
+          "status"
+        );
+
+      status.innerHTML =
+        "Connection Error";
+
+      status.className =
+        "disconnected";
+
+    }
+  );
+
+
+  // ==========================================
+  // MQTT Offline
+  // ==========================================
+
+  client.on(
+    "offline",
+    function () {
+
+      const status =
+        document.getElementById(
+          "status"
+        );
+
+      status.innerHTML =
+        "Disconnected";
+
+      status.className =
+        "disconnected";
+
+    }
+  );
+
+</script>
+
+</body>
+
+</html>
+```
