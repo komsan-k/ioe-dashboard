@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IoT MQTT Dashboard</title>
+
+    <script src=
+    "https://unpkg.com/mqtt/dist/mqtt.min.js">
+    </script>
+</head>
+
+<body>
+
+<h1>IoT Dashboard</h1>
+
+<h2>Temperature</h2>
+
+<h1 id="temperature">-- °C</h1>
+
+<p id="status">Connecting...</p>
+
+<script>
+
+const broker =
+    "wss://YOUR-MQTT-BROKER-WEBSOCKET";
+
+const client = mqtt.connect(broker);
+
+client.on("connect", function () {
+
+    document.getElementById("status").innerText =
+        "MQTT Connected";
+
+    client.subscribe("iot/lab/temperature");
+
+});
+
+client.on("message", function(topic, message) {
+
+    const temperature = message.toString();
+
+    document.getElementById("temperature").innerText =
+        temperature + " °C";
+
+});
+
+client.on("error", function(error) {
+
+    document.getElementById("status").innerText =
+        "Connection Error";
+
+    console.log(error);
+
+});
+
+</script>
+
+</body>
+</html>
